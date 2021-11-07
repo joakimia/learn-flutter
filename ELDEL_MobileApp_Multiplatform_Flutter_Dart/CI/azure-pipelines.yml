@@ -1,0 +1,62 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+pool:
+  vmImage: 'macOS-10.14'
+
+trigger:
+  - master
+  - release/*
+
+name: '$(Build.BuildId)' # Renaming the pipeline in order to use it or flutter's buildNumber and map it to a specific build
+
+jobs:
+  - job: buildTestAndPublish
+    displayName: 'Test, build, sign and publish appbundle file'
+    steps:
+    
+    - task: CopyFiles@2
+      displayName: 'Copy source code to current working directory'
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/app'
+        Contents: '**'
+        TargetFolder: '$(System.DefaultWorkingDirectory)'
+
+    - task: downloadsSecureFile@0
+      displayName: 'Download .env file'
+      inputs:
+        fileInput: '.env'
+        targetPath: '$(System.DefaultWorkingDirectory)'
+
+    - task: downloadsSecureFile@0
+      displayName: 'Download eldel_android_keystore file'
+      inputs:
+        fileInput: 'eldel_android_keystore'
+        targetPath: '$(System.DefaultWorkingDirectory)/android/app'
+
+    - task: downloadsSecureFile@0
+      displayName: 'Download upload key file'
+      inputs:
+        fileInput: 'private_key.pepk'
+        targetPath: '$(System.DefaultWorkingDirectory)/android/app'
+        
+    - task: FlutterInstall@0
+      displayName: 'Install Flutter project'
+      inputs:
+        channel: 'stable'
+        version: 'latest'
+
+    - task: FlutterBuild@0
+      displayName: 'Build appbundle file'
+      inputs:
+        target: 'aab'
+        projectDirectory: '$(System.DefaultWorkingDirectory)'
+        buildNumber: '$(Build.BuildId)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish appbundle file as artifact'
+      inputs:
+        PathtoPublish: '$(System.DefaultWorkingDirectory)/build/app/outputs/bundle/release/app-release.aab'
+        ArtifactName: 'mobile_app_flutter_drop'
